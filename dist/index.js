@@ -50,6 +50,7 @@ const parse_diff_1 = __importDefault(__nccwpck_require__(4833));
 const minimatch_1 = __importDefault(__nccwpck_require__(2002));
 const GITHUB_TOKEN = core.getInput("GITHUB_TOKEN");
 const OPENAI_API_KEY = core.getInput("OPENAI_API_KEY");
+const OPENAI_API_MODEL = core.getInput("OPENAI_API_MODEL");
 const octokit = new rest_1.Octokit({ auth: GITHUB_TOKEN });
 const configuration = new openai_1.Configuration({
     apiKey: OPENAI_API_KEY,
@@ -58,12 +59,15 @@ const openai = new openai_1.OpenAIApi(configuration);
 function getPRDetails() {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("Getting PR details");
         const { repository, number } = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH || "", "utf8"));
+        console.log("Repository:", repository);
         const prResponse = yield octokit.pulls.get({
             owner: repository.owner.login,
             repo: repository.name,
             pull_number: number,
         });
+        console.log("PR response:", prResponse);
         return {
             owner: repository.owner.login,
             repo: repository.name,
@@ -151,7 +155,7 @@ function getAIResponse(prompt) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         const queryConfig = {
-            model: "gpt-4",
+            model: OPENAI_API_MODEL,
             temperature: 0.2,
             max_tokens: 700,
             top_p: 1,
@@ -200,9 +204,12 @@ function createReviewComment(owner, repo, pull_number, comments) {
 function main() {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("Starting");
         const prDetails = yield getPRDetails();
+        console.log("PR Details:", prDetails);
         let diff;
         const eventData = JSON.parse((0, fs_1.readFileSync)((_a = process.env.GITHUB_EVENT_PATH) !== null && _a !== void 0 ? _a : "", "utf8"));
+        console.log("Event data:", eventData);
         if (eventData.action === "opened") {
             diff = yield getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
         }
@@ -210,16 +217,15 @@ function main() {
             const newBaseSha = eventData.before;
             const newHeadSha = eventData.after;
             const response = yield octokit.repos.compareCommits({
+                headers: {
+                    accept: "application/vnd.github.v3.diff",
+                },
                 owner: prDetails.owner,
                 repo: prDetails.repo,
                 base: newBaseSha,
                 head: newHeadSha,
             });
-            diff = response.data.diff_url
-                ? yield octokit
-                    .request({ url: response.data.diff_url })
-                    .then((res) => res.data)
-                : null;
+            diff = String(response.data);
         }
         else {
             console.log("Unsupported event:", process.env.GITHUB_EVENT_NAME);
