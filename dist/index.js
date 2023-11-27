@@ -59,15 +59,12 @@ const openai = new openai_1.OpenAIApi(configuration);
 function getPRDetails() {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("Getting PR details");
         const { repository, number } = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH || "", "utf8"));
-        console.log("Repository:", repository);
         const prResponse = yield octokit.pulls.get({
             owner: repository.owner.login,
             repo: repository.name,
             pull_number: number,
         });
-        console.log("PR response:", prResponse);
         return {
             owner: repository.owner.login,
             repo: repository.name,
@@ -204,12 +201,9 @@ function createReviewComment(owner, repo, pull_number, comments) {
 function main() {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("Starting");
         const prDetails = yield getPRDetails();
-        console.log("PR Details:", prDetails);
         let diff;
         const eventData = JSON.parse((0, fs_1.readFileSync)((_a = process.env.GITHUB_EVENT_PATH) !== null && _a !== void 0 ? _a : "", "utf8"));
-        console.log("Event data:", eventData);
         if (eventData.action === "opened") {
             diff = yield getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
         }
